@@ -1,54 +1,84 @@
-const express = require('express')
-const dotenv = require('dotenv')
-const { MongoClient } = require('mongodb'); 
-const bodyparser = require('body-parser')
-const cors = require('cors')
+const express = require('express');
+const dotenv = require('dotenv');
+const { MongoClient } = require('mongodb');
+const bodyparser = require('body-parser');
+const cors = require('cors');
 
-dotenv.config()
+dotenv.config();
 
+// App
+const app = express();
 
-// Connecting to the MongoDB Client
-const url = process.env.MONGO_URI;
-const client = new MongoClient(url);
-client.connect();
-
-// App & Database
-const dbName = process.env.DB_NAME 
-const app = express()
-const port = 3000 
+// Use Render's PORT in production, 3000 locally
+const port = process.env.PORT || 5000;
 
 // Middleware
-app.use(bodyparser.json())
-app.use(cors())
+app.use(bodyparser.json());
+app.use(cors());
 
+// Mongo client + DB
+const url = process.env.MONGO_URI;
+const dbName = process.env.DB_NAME;
 
-// Get all the passwords
+if (!url) {
+  console.error('❌ MONGO_URI is not defined in environment variables');
+  process.exit(1);
+}
+
+let client;
+let db;
+
+async function connectToMongo() {
+  try {
+    client = new MongoClient(url);
+    await client.connect();
+    db = client.db(dbName);
+    console.log('✅ Connected to MongoDB, DB:', dbName);
+  } catch (err) {
+    console.error('❌ Failed to connect to MongoDB:', err);
+    process.exit(1);
+  }
+}
+
+// Routes
 app.get('/', async (req, res) => {
-    const db = client.db(dbName);
+  try {
     const collection = db.collection('passwords');
     const findResult = await collection.find({}).toArray();
-    res.json(findResult)
-})
+    res.json(findResult);
+  } catch (err) {
+    console.error('Error in GET /:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
 
-// Save a password
-app.post('/', async (req, res) => { 
-    const password = req.body
-    const db = client.db(dbName);
+app.post('/', async (req, res) => {
+  try {
+    const password = req.body;
     const collection = db.collection('passwords');
-    const findResult = await collection.insertOne(password);
-    res.send({success: true, result: findResult})
-})
+    const result = await collection.insertOne(password);
+    res.send({ success: true, result });
+  } catch (err) {
+    console.error('Error in POST /:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
 
-// Delete a password by id
-app.delete('/', async (req, res) => { 
-    const password = req.body
-    const db = client.db(dbName);
+app.delete('/', async (req, res) => {
+  try {
+    const password = req.body;
     const collection = db.collection('passwords');
-    const findResult = await collection.deleteOne(password);
-    res.send({success: true, result: findResult})
-})
+    const result = await collection.deleteOne(password);
+    res.send({ success: true, result });
+  } catch (err) {
+    console.error('Error in DELETE /:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
 
-
-app.listen(port, () => {
-    console.log(`Example app listening on  http://localhost:${port}`)
-})
+// Start server only after Mongo connection
+connectToMongo().then(() => {
+  app.listen(port, () => {
+    console.log(`🚀 Server listening on port ${port}`);
+  });
+});
