@@ -3,7 +3,7 @@
 PassOp is a simple password manager built with **React** on the frontend and **Node.js + Express + MongoDB** on the backend.  
 You can securely save, view, copy, update, and delete your passwords for different websites in one place.
 
-Deployed it using vercel:https://passop-mongodb.vercel.app/
+Deployed it using vercel:pass-op-mongo-five.vercel.app
 you can see this project preview using the above link
 
 
